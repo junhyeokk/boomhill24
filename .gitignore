@@ -1,0 +1,4 @@
+## pytorch model file ##
+*.pth
+*.pt
+model/models/
