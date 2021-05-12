@@ -30,6 +30,7 @@ def get_game_image(win_pos):
     sct = mss()
     sct_img = sct.grab(win_pos)
     img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
+    # img.show()
     return img
 
 def image_preprocessing(img):
@@ -42,6 +43,9 @@ def image_preprocessing(img):
     return input_tensor.unsqueeze(0)
 
 if __name__ == "__main__":
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print(device)
+
     hwnd = win32gui.FindWindow(None, "KartRider Client")
     # hwnd = win32gui.FindWindow(None, "카카오톡")
     if hwnd == 0:
@@ -51,13 +55,14 @@ if __name__ == "__main__":
     # 게임 클라이언트 화면 위치
 
     model = load_model()
+    model.to(device)
     model.eval()
 
     while True:
         start_time = time.time()
 
         game_image = image_preprocessing(get_game_image(win_pos))
-        result = np.argmax(model(game_image).detach().numpy())
+        result = torch.argmax(model(game_image.to(device)))
         result_string = f'{result:06b}'
         print(f"추론결과 : {result_string}")
 
