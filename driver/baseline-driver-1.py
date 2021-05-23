@@ -13,6 +13,8 @@ from torchvision.models import resnet50
 import os
 import time
 
+import icsKb as kb
+
 def load_model():
     num_classes = 64
     save_folder = "../model/models/"
@@ -67,5 +69,6 @@ if __name__ == "__main__":
         print(f"추론결과 : {result_string}")
 
         # result에 맞춰 키 입력
+        kb.str2keys(result_string)
 
         print(f"실행시간 : {time.time() - start_time}")
