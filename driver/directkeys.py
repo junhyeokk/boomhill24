@@ -1,4 +1,5 @@
-# source: https://github.com/Sentdex/pygta5
+# source1: https://github.com/Sentdex/pygta5
+# source2: https://github.com/MattYoon/Autonomous-Kartrider
 
 # direct inputs
 # source to this solution and code:
@@ -10,16 +11,12 @@ import time
 
 SendInput = ctypes.windll.user32.SendInput
 
-
-W = 0x11
-A = 0x1E
-S = 0x1F
-D = 0x20
-
-NP_2 = 0x50
-NP_4 = 0x4B
-NP_6 = 0x4D
-NP_8 = 0x48
+UP = 0xC8
+LEFT = 0xCB
+RIGHT = 0xCD
+DOWN = 0xD0
+LCTRL = 0x1D
+LSHIFT = 0x2A
 
 # C struct redefinitions 
 PUL = ctypes.POINTER(ctypes.c_ulong)
@@ -69,7 +66,9 @@ def ReleaseKey(hexKeyCode):
     ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
 
 if __name__ == '__main__':
-    PressKey(0x11)
-    time.sleep(1)
-    ReleaseKey(0x11)
+
+    time.sleep(3)
+    PressKey(UP)
+    time.sleep(3)
+    ReleaseKey(UP)
     time.sleep(1)
