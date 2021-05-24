@@ -2,3 +2,5 @@
 *.pth
 *.pt
 model/models/
+
+.idea/

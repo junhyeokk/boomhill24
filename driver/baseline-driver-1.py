@@ -48,8 +48,8 @@ if __name__ == "__main__":
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print(device)
 
-    hwnd = win32gui.FindWindow(None, "KartRider Client")
-    # hwnd = win32gui.FindWindow(None, "카카오톡")
+    # hwnd = win32gui.FindWindow(None, "KartRider Client")
+    hwnd = win32gui.FindWindow(None, "카카오톡")
     if hwnd == 0:
         quit("Please run KartRider")
     rect = win32gui.GetWindowRect(hwnd)
