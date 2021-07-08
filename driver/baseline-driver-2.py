@@ -24,9 +24,17 @@ class KartModel2(nn.Module):
     self.backbone = resnet50(pretrained=True)
     self.backbone.fc = nn.Sequential(
       nn.Linear(in_features=2048, out_features=1000, bias=True),
+      nn.ReLU(),    # 새로 추가
     )
     self.fc_include_past_inputs = nn.Sequential(
-        nn.Linear(in_features=1000+6*window_size, out_features=class_num, bias=True),
+        nn.Linear(in_features=1000+6*window_size, out_features=516, bias=True),
+        nn.ReLU(),
+        nn.Linear(in_features=516, out_features=256, bias=True),
+        nn.ReLU(),
+        nn.Linear(in_features=256, out_features=128, bias=True),
+        nn.ReLU(),
+        nn.Linear(in_features=128, out_features=class_num, bias=True),
+        nn.ReLU(),
         nn.Sigmoid(),
     )
   
