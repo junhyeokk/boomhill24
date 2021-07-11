@@ -57,7 +57,7 @@ class KartModel8(nn.Module):
 
   def forward(self, x_3d, key_inputs, hidden1 = None, hidden2 = None):
     for t in range(x_3d.size(1)):
-      with torch.no_grad():
+    #   with torch.no_grad():
         x = self.resnet(x_3d[:, t, :, :, :])
         out1, hidden1 = self.lstm_image(x.unsqueeze(1), hidden1)
     # batch first = True
@@ -89,8 +89,8 @@ class Driver(QThread):
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         print(self.device)
 
-        self.hwnd = win32gui.FindWindow(None, "KartRider Client")
-        # hwnd = win32gui.FindWindow(None, "카카오톡")
+        # self.hwnd = win32gui.FindWindow(None, "KartRider Client")
+        self.hwnd = win32gui.FindWindow(None, "카카오톡")
         if self.hwnd == 0:
             quit("Please run KartRider")
         self.rect = win32gui.GetWindowRect(self.hwnd)
@@ -111,17 +111,12 @@ class Driver(QThread):
     def load_model(self):
         num_classes = 64
         save_folder = "../model/models/"
-        model_name = "test_model_minimap4.pt"
+        model_name = "test_model_minimap5.pt"
         save_path = os.path.join(save_folder, model_name)
-        # model = resnet50()
-        # model.fc = nn.Sequential(
-        #     nn.Linear(in_features=2048, out_features=num_classes, bias=True),
-        #     # nn.Softmax(dim=1)
-        # )
         model = KartModel8()
-        #model.load_state_dict(torch.load(save_path))
+        model.load_state_dict(torch.load(save_path))
         return model
-
+        
     def get_game_image(self, win_pos):
         sct = mss()
         sct_img = sct.grab(win_pos)
@@ -153,44 +148,58 @@ class Driver(QThread):
 
         while self.isRunning:
             start_time = time.time()
-            # game_image = image_preprocessing(Image.open('./test.jpg'))
 
-            game_image = self.image_preprocessing(self.get_game_image(self.win_pos)).unsqueeze(0)
+            # game_image = self.image_preprocessing(self.get_game_image(self.win_pos)).unsqueeze(0)
+            game_image = self.image_preprocessing(self.get_game_image(self.win_pos))
+            # print(game_image.shape)
+            # tf = transforms.ToPILImage()
+            # tf(game_image[0]).show()
+            # break
+
             # 게임 이미지의 배치 사이즈, 시퀸스가 1
+
             # 여기서 시퀸스를 10 정도로 늘리기
-            # game_image_list.append(game_image)
-            # if len(game_image_list) > 10:
-            #     game_image_list.pop(0)
-            # game_images = torch.stack(game_image_list, dim = 1)
+            game_image_list.append(game_image)
+            if len(game_image_list) > 10:
+                game_image_list.pop(0)
+            game_images = torch.stack(game_image_list, dim = 1)
             # 시간축으로 이미지 쌓기
 
-            past_result = torch.Tensor(list(map(int, list(result_string)))).unsqueeze(0).unsqueeze(0)
+            # past_result = torch.Tensor(list(map(int, list(result_string)))).unsqueeze(0).unsqueeze(0)
+            past_result = torch.Tensor(list(map(int, list(result_string)))).unsqueeze(0)
             # 배치 차원 추가
-            # key_input_list.append(past_result)
-            # if len(key_input_list) > 10:
-            #     key_input_list.pop(0)
-            # key_inputs = torch.stack(key_input_list, dim = 1)
+
+            key_input_list.append(past_result)
+            if len(key_input_list) > 10:
+                key_input_list.pop(0)
+            key_inputs = torch.stack(key_input_list, dim = 1)
             # 시간축으로 이전 입력 쌓기
 
-            result, hidden1, hidden2 = self.model(game_image.to(self.device), past_result.to(self.device), hidden1, hidden2)
+            # result, hidden1, hidden2 = self.model(game_image.to(self.device), past_result.to(self.device), hidden1, hidden2)
+            result, hidden1, hidden2 = self.model(game_images.to(self.device), key_inputs.to(self.device))
 
             result = torch.argmax(result, dim=-1).item()
             result_string = f'{result:06b}'
             
             print(f"추론결과 : {result_string}")
             self.gui.inputLabel.setText(f"추론결과 : {result_string}")
+
+            if result_string == '000000':
+                result_string = '100000'
+            
             # result에 맞춰 키 입력
             kb.str2keys(result_string)
 
-            # if result_string == '000000':
-            #     result_string = '100000'
-
             print(f"실행시간 : {time.time() - start_time}")
-            self.gui.timeLabel.setText(f"실행시간 : {time.time() - start_time}")
+            t = time.time() - start_time
+            self.gui.timeLabel.setText(f"실행시간 : {t}")
+            if t < 0.1:
+                time.sleep(0.1 - t)
             # break
-            # cnt += 1
-            # if cnt == 30:
-            #     break
+            cnt += 1
+            if cnt >= 15:
+                hidden1, hidden2 = None, None
+                cnt = 0
 
 
 class MyApp(QWidget):
@@ -231,7 +240,7 @@ class MyApp(QWidget):
                 
         self.setLayout(vbox)
         
-        self.setWindowTitle('csv replayer')
+        self.setWindowTitle('player')
         self.move(300, 300)
         self.resize(400, 200)
         self.show()
@@ -251,7 +260,9 @@ class MyApp(QWidget):
 
 
 if __name__ == "__main__":
-
-    app = QApplication(sys.argv)
-    ex = MyApp()
-    sys.exit(app.exec_())
+    try:
+        app = QApplication(sys.argv)
+        ex = MyApp()
+        sys.exit(app.exec_())
+    except:
+        pass

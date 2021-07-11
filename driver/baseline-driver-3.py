@@ -52,9 +52,9 @@ class KartModel8(nn.Module):
 
   def forward(self, x_3d, key_inputs, hidden1 = None, hidden2 = None):
     for t in range(x_3d.size(1)):
-      with torch.no_grad():
-        x = self.resnet(x_3d[:, t, :, :, :])
-        out1, hidden1 = self.lstm_image(x.unsqueeze(1), hidden1)
+    #   with torch.no_grad():
+      x = self.resnet(x_3d[:, t, :, :, :])
+      out1, hidden1 = self.lstm_image(x.unsqueeze(1), hidden1)
     # batch first = True
     # batch, seq, hidden_size
 
@@ -77,11 +77,7 @@ def load_model():
     save_folder = "../model/models/"
     model_name = "test_model_minimap4.pt"
     save_path = os.path.join(save_folder, model_name)
-    # model = resnet50()
-    # model.fc = nn.Sequential(
-    #     nn.Linear(in_features=2048, out_features=num_classes, bias=True),
-    #     # nn.Softmax(dim=1)
-    # )
+
     model = KartModel8()
     model.load_state_dict(torch.load(save_path))
     return model
@@ -133,7 +129,6 @@ if __name__ == "__main__":
     cnt = 0
     while True:
         start_time = time.time()
-        # game_image = image_preprocessing(Image.open('./test.jpg'))
 
         game_image = image_preprocessing(get_game_image(win_pos)).unsqueeze(0)
         # 게임 이미지의 배치 사이즈, 시퀸스가 1
