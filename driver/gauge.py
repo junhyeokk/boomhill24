@@ -70,11 +70,22 @@ def gauge_speed(gauge, enginetype, frame):
     speed_10 = gauge_match(gaugeimg_10, gauge)
     speed_01 = gauge_match(gaugeimg_01, gauge)
 
-    speed += speed_100*100
-    speed = speed + speed_010*10 if speed_100 != 0 and speed_001 != 0 else speed + speed_010
+    speed += speed_100 * 100
+    speed = speed + speed_010 * 10 if speed_100 != 0 and speed_001 != 0 else speed + speed_010
     speed += speed_001
     speed += speed_10 * 10
     speed += speed_01
 
     # 자리가 매치하지 않으면 0으로 계산됨(무시됨)
     return speed
+
+
+def boost_v1(frame: np.ndarray) -> bool:
+    """
+    v1 엔진의 부스터가 켜져있으면 True 꺼져있으면 False를 return함
+    """
+    # 특정 4x4 범위 픽셀의 HSV 평균을 구함 (해당 픽셀이 매우 밝은 주황에 가까울 경우)
+    # H 값이 25 이하 (색이 빨강~주황에 가까울 때)
+    # V 값이 230 이상 (밝기가 매우 밝을 때)
+    hsv = cv2.cvtColor(frame[743:747, 425:429], cv2.COLOR_BGR2HSV)
+    return True if np.average(hsv[:, :, 2]) > 230 and np.average(hsv[:, :, 0]) < 25 else False
