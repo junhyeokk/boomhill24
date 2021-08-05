@@ -1,3 +1,4 @@
+import math
 import os
 import numpy as np
 import cv2
@@ -89,3 +90,30 @@ def boost_v1(frame: np.ndarray) -> bool:
     # V 값이 230 이상 (밝기가 매우 밝을 때)
     hsv = cv2.cvtColor(frame[743:747, 425:429], cv2.COLOR_BGR2HSV)
     return True if np.average(hsv[:, :, 2]) > 230 and np.average(hsv[:, :, 0]) < 25 else False
+
+
+def boost_range(frame: np.ndarray) -> float:
+    """
+    부스터의 게이지를 0.1 단위로 측정하여 출력 (0, 0.1, ~, 0.9, 1)
+    """
+    for per in np.arange(0, 1, 0.1):
+        # print(f"{per} percent image")
+        percent_pos = circle_position((513, 725), 71, per)
+        boost_pos = frame[percent_pos[1] - 2:percent_pos[1] + 2, percent_pos[0] - 2:percent_pos[0] + 2]
+        # print(f"{per} : {percent_pos}")
+        # cv2_imshow(boost_pos)
+        if np.average(boost_pos[:, :, 2]) < 100:
+            return per
+
+    return 1
+
+
+def circle_position(middle: tuple, radius: float, percent: float) -> tuple:
+    """
+    픽셀 값의 위치를 percent 별로 설정
+    boost_range 내 사용
+    """
+    angle = 1.04 * math.pi + percent * math.pi * 1.06
+    x = int(middle[0] + radius * math.cos(angle))
+    y = int(middle[1] + radius * math.sin(angle))
+    return x, y

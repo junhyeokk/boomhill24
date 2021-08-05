@@ -163,8 +163,11 @@ class Driver(QThread):
             # 게임 계기판 속도
             game_speed = gauge.gauge_speed(self.gauge, 'x', game_image_cv2)
             game_boost = gauge.boost_v1(game_image_cv2)
+            game_boost_per = gauge.boost_range(game_image_cv2)
             print('속도 : ', game_speed)
             print('현재 부스터 : ', game_boost)
+            print("현재 부스터 게이지 : ",game_boost_per)
+
 
             # game_image = self.image_preprocessing(self.get_game_image(self.win_pos)).unsqueeze(0)
             game_image = self.image_preprocessing(self.get_game_image(self.win_pos))
