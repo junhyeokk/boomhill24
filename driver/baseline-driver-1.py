@@ -2,13 +2,14 @@ import numpy as np
 import win32gui
 from mss import mss
 import ctypes
+from io import BytesIO
 
 from PIL import Image
 
 import torch
 import torch.nn as nn
 from torchvision import transforms
-from torchvision.models import resnet50
+from torchvision.models import resnet50, resnet34
 
 import os
 import time
@@ -16,19 +17,23 @@ import time
 import icsKb as kb
 
 class KartModel1(nn.Module):
-  def __init__(self, class_num = 6):
-    super(KartModel1, self).__init__()
-    self.class_num = class_num
-    self.backbone = resnet50(pretrained=True)
-    self.backbone.fc = nn.Sequential(
-      nn.Linear(in_features=2048, out_features=class_num, bias=True),
-      # nn.Softmax(dim=1)
-      nn.Sigmoid()
-    )
+    def __init__(self, class_num = 8):
+        super(KartModel1, self).__init__()
+        self.class_num = class_num
+        self.backbone = resnet34(pretrained=True)
+        self.backbone.fc = nn.Sequential(
+            nn.Linear(in_features=512, out_features=256, bias=True),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Linear(in_features=256, out_features=class_num, bias=True),
+            # nn.Softmax(dim=1)
+            # nn.Sigmoid(),
+        )
   
-  def forward(self, input_image):
-    output = self.backbone(input_image)
-    return output
+    def forward(self, input_image):
+        output = self.backbone(input_image)
+
+        return output
 
 def load_model():
     num_classes = 64
@@ -49,6 +54,11 @@ def get_game_image(win_pos):
     sct_img = sct.grab(win_pos)
     img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
     # img.show()
+    with BytesIO() as f:
+        img.save(f, format="JPEG")
+        f.seek(0)
+        img = Image.open(f)
+        img.load()
     return img
 
 def image_preprocessing(img):
@@ -69,8 +79,7 @@ if __name__ == "__main__":
     if hwnd == 0:
         quit("Please run KartRider")
     rect = win32gui.GetWindowRect(hwnd)
-    win_pos = {"top": rect[1] + 34, "left": rect[0] + 3, "width": 1280, "height": 960}
-    # 게임 클라이언트 화면 위치
+    win_pos = {"top": rect[1] + 389, "left": rect[0] + 1037, "width": 223, "height": 212}
 
     model = load_model()
     model.to(device)
@@ -82,12 +91,20 @@ if __name__ == "__main__":
         game_image = image_preprocessing(get_game_image(win_pos))
         # result = torch.argmax(model(game_image.to(device)))
         result = model(game_image.to(device))
-        result = result.squeeze().cpu()
-        result = result > 0.45
-        # result_string = f'{result:06b}'
-        print(f"추론결과 : {result}")
+        pred = torch.argmax(result, dim=-1).item()
+        # result = result.squeeze().cpu() 
+        # result = result > 0.45
+        # print(pred)
+        result_string = f'{pred:03b}000'
+        print(f"추론결과 : {result_string}")
 
         # result에 맞춰 키 입력
-        kb.str2keys(result)
+        kb.str2keys(result_string)
 
+        t = time.time() - start_time
+        # print(f"실행시간 : {t}")
+
+        if t < 0.1:
+            time.sleep(0.1 - t)
+        
         print(f"실행시간 : {time.time() - start_time}")
