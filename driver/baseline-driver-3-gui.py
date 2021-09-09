@@ -24,61 +24,85 @@ from PyQt5.QtWidgets import QApplication, QWidget, \
 from PyQt5.QtCore import QCoreApplication, QThread
 
 class KartModel8(nn.Module):
-  def __init__(self, num_class = 64, cnn_to_lstm = 1024, lstm_hidden = 512, num_layers = 5):
-    super(KartModel8, self).__init__()
-    self.num_class = num_class
-    self.num_layers = num_layers
-    self.hidden_size = lstm_hidden
+    def __init__(self, num_class = 64, cnn_to_lstm = 256, lstm_hidden = 128, num_layers = 4, dropout_rate = 0.2):
+        super(KartModel8, self).__init__()
+        self.num_class = num_class
+        self.num_layers = num_layers
+        self.hidden_size = lstm_hidden
 
-    self.resnet = resnet50(pretrained=False)
-    self.resnet.fc = nn.Sequential(
-      nn.Linear(in_features=2048, out_features=cnn_to_lstm, bias=True),
-      nn.ReLU(),
-    )
-    self.lstm_image = nn.LSTM(
-        input_size = cnn_to_lstm,
-        hidden_size = lstm_hidden,
-        num_layers = num_layers,
-        batch_first = True,
-        dropout = 0.3,
-    )
-    self.lstm_key = nn.LSTM(
-        input_size = 6,
-        hidden_size = lstm_hidden,
-        num_layers = num_layers,
-        batch_first = True,
-        dropout = 0.3,
-    )
+        self.resnet_minimap = resnet50(pretrained=True)
+        self.resnet_minimap.fc = nn.Sequential(
+            nn.Linear(in_features=2048, out_features=cnn_to_lstm, bias=True),
+            nn.ReLU(),
+        )
+        self.lstm_minimap = nn.LSTM(
+            input_size = cnn_to_lstm,
+            hidden_size = lstm_hidden,
+            num_layers = num_layers,
+            batch_first = True,
+            dropout = dropout_rate,
+        )
 
-    self.fc_1 = nn.Linear(lstm_hidden * 2, lstm_hidden * 2)
-    self.bn1 = nn.BatchNorm1d(lstm_hidden * 2)
-    self.relu = nn.ReLU()
-    self.fc_2 = nn.Linear(lstm_hidden * 2, lstm_hidden)
-    self.bn2 = nn.BatchNorm1d(lstm_hidden)
-    self.fc_3 = nn.Linear(lstm_hidden, num_class)
-    # self.sigmoid = nn.Sigmoid()
+        self.resnet_game = resnet50(pretrained=True)
+        self.resnet_game.fc = nn.Sequential(
+            nn.Linear(in_features=2048, out_features=cnn_to_lstm, bias=True),
+            nn.ReLU(),
+        )
+        self.lstm_game = nn.LSTM(
+            input_size = cnn_to_lstm,
+            hidden_size = lstm_hidden,
+            num_layers = num_layers,
+            batch_first = True,
+            dropout = dropout_rate,
+        )
 
-  def forward(self, x_3d, key_inputs, hidden1 = None, hidden2 = None):
-    for t in range(x_3d.size(1)):
-      with torch.no_grad():
-        x = self.resnet(x_3d[:, t, :, :, :])
-        out1, hidden1 = self.lstm_image(x.unsqueeze(1), hidden1)
-    # batch first = True
-    # batch, seq, hidden_size
+        self.lstm_features = nn.LSTM(
+            input_size = 6,
+            hidden_size = lstm_hidden,
+            num_layers = num_layers,
+            batch_first = True,
+            dropout = dropout_rate,
+        )
 
-    out2, hidden2 = self.lstm_key(key_inputs, hidden2)
+        # self.bn0 = nn.BatchNorm1d(lstm_hidden * 3)
+        self.fc_1 = nn.Linear(lstm_hidden * 3, lstm_hidden * 2)
+        self.bn1 = nn.BatchNorm1d(lstm_hidden * 2)
+        self.relu = nn.ReLU()
+        # self.dropout1 = nn.Dropout(dropout_rate)
+        self.fc_2 = nn.Linear(lstm_hidden * 2, lstm_hidden)
+        self.bn2 = nn.BatchNorm1d(lstm_hidden)
+        self.fc_3 = nn.Linear(lstm_hidden, num_class)
+        # self.sigmoid = nn.Sigmoid()
 
-    out = self.fc_1(torch.cat([out1[:, -1, :], out2[:, -1, :]], dim=1))
-    # 마지막 sequence
-    out = self.bn1(out)
-    out = self.relu(out)
-    out = self.fc_2(out)
-    out = self.bn2(out)
-    out = self.relu(out)
-    out = self.fc_3(out)
-    # out = self.sigmoid(out)
+  # 전체 게임화면, 미니맵, 속도, 이전입력
+    def forward(self, games, minimaps, key_inputs, hidden1 = None, hidden2 = None, hidden3 = None):
+        for t in range(minimaps.size(1)):
+            # with torch.no_grad():
+            x1 = self.resnet_minimap(minimaps[:, t, :, :, :])
+            out1, hidden1 = self.lstm_minimap(x1.unsqueeze(1), hidden1)
+        # batch first = True
+        # batch, seq, hidden_size
 
-    return out, hidden1, hidden2
+        for t in range(games.size(1)):
+            x2 = self.resnet_game(games[:, t, :, :, :])
+            out2, hidde2 = self.lstm_game(x2.unsqueeze(1), hidden2)
+
+        out3, hidden3 = self.lstm_features(key_inputs, hidden3)
+        # batch, seq, features
+
+        # out = self.bn0(torch.cat([out1[:, -1, :], out2[:, -1, :], out3[:, -1, :]], dim=1))
+        out = self.fc_1(torch.cat([out1[:, -1, :], out2[:, -1, :], out3[:, -1, :]], dim=1))
+        # 마지막 sequence
+        out = self.bn1(out)
+        out = self.relu(out)
+        # out = self.dropout1(out)
+        out = self.fc_2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+        out = self.fc_3(out)
+        # out = self.sigmoid(out)
+
+        return out, hidden1, hidden2, hidden3
 
 
 # 기존의 main 코드와 호출하는 함수들을 묶었음
@@ -91,39 +115,40 @@ class Driver(QThread):
 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         print(self.device)
-
+        
         self.hwnd = win32gui.FindWindow(None, "KartRider Client")
         # self.hwnd = win32gui.FindWindow(None, "카카오톡")
         if self.hwnd == 0:
             quit("Please run KartRider")
         self.rect = win32gui.GetWindowRect(self.hwnd)
-        # win_pos = {"top": rect[1] + 34, "left": rect[0] + 3, "width": 1280, "height": 960}
+        self.win_pos = {"top": self.rect[1] + 34, "left": self.rect[0] + 3, "width": 1280, "height": 960}
         # 게임 클라이언트 화면 위치
 
         # win_pos = {"top": rect[1] + 395, "left": rect[0] + 1045, "width": 225, "height": 205}
-        self.win_pos = {"top": self.rect[1] + 389, "left": self.rect[0] + 1037, "width": 223, "height": 212}
+        # self.win_pos = {"top": self.rect[1] + 389, "left": self.rect[0] + 1037, "width": 223, "height": 212}
         # get_game_image(win_pos)
         # exit()
-
+        
         self.model = self.load_model()
         self.model.to(self.device)
         self.model.eval()
-
         self.isRunning = False
 
     def load_model(self):
         num_classes = 64
         save_folder = "../model/models/"
-        model_name = "test_model_minimap6.pt"
+        model_name = "final_model_ep1_part1.pt"
         save_path = os.path.join(save_folder, model_name)
         model = KartModel8()
         model.load_state_dict(torch.load(save_path))
         return model
         
-    def get_game_image(self, win_pos, count):
+    def get_game_image(self, win_pos):
         sct = mss()
         sct_img = sct.grab(win_pos)
         img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
+        minimap = img.crop((1034, 355, 1257, 567))
+
         # 이미지 저장하며 플레이
         # img.show()
         # img.save(f"./ingame-test2/{count}.jpg")
@@ -134,27 +159,33 @@ class Driver(QThread):
             f.seek(0)
             img = Image.open(f)
             img.load()
-        return img
 
-    def image_preprocessing(self, img):
+        with BytesIO() as f:
+            minimap.save(f, format="JPEG")
+            f.seek(0)
+            minimap = Image.open(f)
+            minimap.load()
+        img.show()
+        minimap.show()
+        
+        return img, minimap
+
+    def image_preprocessing(self, img, minimap):
         preprocess = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
         input_tensor = preprocess(img)
-        return input_tensor.unsqueeze(0)
-        # 배치 차원 추가
+        minimap_tensor = preprocess(minimap)
+        return input_tensor.unsqueeze(0).unsqueeze(0), minimap_tensor.unsqueeze(0).unsqueeze(0)
+        # 배치 차원 추가 + 시간 차원 추가
     
     def run(self):
     
-        hidden1 = None
-        hidden2 = None
-        result_string = '100000'
-        result_set = ['100000', '110000', '101000']
+        hidden1, hidden2, hidden3 = None, None, None
+        result_string = '000000'
 
-        game_image_list = []
-        key_input_list = []
         cnt = 0
         softmax = torch.nn.Softmax(dim=-1)
 
@@ -163,57 +194,21 @@ class Driver(QThread):
         while self.isRunning:
             start_time = time.time()
 
-            game_image = self.image_preprocessing(self.get_game_image(self.win_pos, cnt)).unsqueeze(0)
-            # game_image = self.image_preprocessing(self.get_game_image(self.win_pos))
-            # game_image = self.image_preprocessing(Image.open(f"./test-images/{cnt}.jpg"))
-            # print(game_image.shape)
-            # tf = transforms.ToPILImage()
-            # tf(game_image[0]).show()
-            # break
-
-            # 게임 이미지의 배치 사이즈, 시퀸스가 1
-
-            # 여기서 시퀸스를 10 정도로 늘리기
-            # game_image_list.append(game_image)
-            # if len(game_image_list) > 10:
-            #     game_image_list.pop(0)
-            # game_images = torch.stack(game_image_list, dim = 1)
-            # # 시간축으로 이미지 쌓기
-
+            game_image, minimap = self.image_preprocessing(*(self.get_game_image(self.win_pos)))
             past_result = torch.Tensor(list(map(int, list(result_string)))).unsqueeze(0).unsqueeze(0)
-            # past_result = torch.Tensor(list(map(int, list(result_string)))).unsqueeze(0)
-            # # 배치 차원 추가
 
-            # key_input_list.append(past_result)
-            # if len(key_input_list) > 10:
-            #     key_input_list.pop(0)
-            # key_inputs = torch.stack(key_input_list, dim = 1)
-            # # 시간축으로 이전 입력 쌓기
-
-            result, hidden1, hidden2 = self.model(game_image.to(self.device), past_result.to(self.device), hidden1, hidden2)
+            with torch.no_grad():
+                result, hidden1, hidden2, hidden3 = self.model(game_image.to(self.device), minimap.to(self.device), past_result.to(self.device), hidden1, hidden2, hidden3)
             # result, hidden1, hidden2 = self.model(game_images.to(self.device), key_inputs.to(self.device))
             
             p = softmax(result)[0]
             result = torch.argmax(result, dim=-1).item()
             p = (p[result]).item()
             result_string = f'{result:06b}'
-            # if result_string == f"{result:06b}":
-            #     cnt += 1
-            # else:
-            #     cnt = 0
-            
-            # if cnt >= 3:
-            #     result_string = random.choice(result_set)
-            # else:
-            #     result_string = f'{result:06b}'
             
             print(f"추론결과 : {result_string}")
             self.gui.inputLabel.setText(f"추론결과 : {result_string}")
 
-            # if result_string == '000000':
-            #     result_string = '100000'
-            
-            # result에 맞춰 키 입력
             kb.str2keys(result_string)
 
             print(f"실행시간 : {time.time() - start_time}")
@@ -221,7 +216,8 @@ class Driver(QThread):
             self.gui.timeLabel.setText(f"확률 : {p:.3}")
             if t < 0.1:
                 time.sleep(0.1 - t)
-            # break
+            
+            self.isRunning = False
             cnt += 1
             # if cnt >= 15:
             #     hidden1, hidden2 = None, None
