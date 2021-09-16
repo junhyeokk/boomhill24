@@ -85,7 +85,7 @@ class KartModel8(nn.Module):
 
         for t in range(games.size(1)):
             x2 = self.resnet_game(games[:, t, :, :, :])
-            out2, hidde2 = self.lstm_game(x2.unsqueeze(1), hidden2)
+            out2, hidden2 = self.lstm_game(x2.unsqueeze(1), hidden2)
 
         out3, hidden3 = self.lstm_features(key_inputs, hidden3)
         # batch, seq, features
@@ -147,26 +147,17 @@ class Driver(QThread):
         sct = mss()
         sct_img = sct.grab(win_pos)
         img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
-        minimap = img.crop((1034, 355, 1257, 567))
 
-        # 이미지 저장하며 플레이
-        # img.show()
-        # img.save(f"./ingame-test2/{count}.jpg")
-        # img = Image.open(f"./ingame-test2/{count}.jpg")
-        # print(img.mode)
         with BytesIO() as f:
             img.save(f, format="JPEG")
             f.seek(0)
             img = Image.open(f)
             img.load()
+            
+        minimap = img.crop((1034, 355, 1257, 567))
 
-        with BytesIO() as f:
-            minimap.save(f, format="JPEG")
-            f.seek(0)
-            minimap = Image.open(f)
-            minimap.load()
-        img.show()
-        minimap.show()
+        # img.show()
+        # minimap.show()
         
         return img, minimap
 
@@ -217,7 +208,7 @@ class Driver(QThread):
             if t < 0.1:
                 time.sleep(0.1 - t)
             
-            self.isRunning = False
+            # self.isRunning = False
             cnt += 1
             # if cnt >= 15:
             #     hidden1, hidden2 = None, None
