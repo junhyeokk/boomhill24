@@ -8,4 +8,4 @@
 * demo : 발표에 사용한 테스트 코드와 모델 가중치
 <br/><br/>
 
-<a href="https://docs.google.com/document/d/1stkhaSqZ0RTQ6JEKugAGN491QdeIRplc/edit?usp=sharing&ouid=107588036944538460813&rtpof=true&sd=true">모델개발과정문서</a>
+<a href="https://docs.google.com/document/d/1stkhaSqZ0RTQ6JEKugAGN491QdeIRplc/edit?usp=sharing&ouid=107588036944538460813&rtpof=true&sd=true">모델 개발과정 문서</a>
