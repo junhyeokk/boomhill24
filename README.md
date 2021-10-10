@@ -54,7 +54,7 @@ python ./demo/driver2_cnn_lstm.py
 <br/><br/>
 
 ## 관련 링크
-* <a href="./demo/initial_plan">초기기획</a>
+* <a href="./demo/initial_plan.pdf">초기기획</a>
 * <a href="https://docs.google.com/document/d/1stkhaSqZ0RTQ6JEKugAGN491QdeIRplc/edit?usp=sharing&ouid=107588036944538460813&rtpof=true&sd=true">모델 실험 기록</a>
 * <a href="https://youtu.be/0fTZ9VjVcr8">데모영상</a>
 * <a href="./demo/poster.pdf">포스터</a>
