@@ -1,5 +1,5 @@
 # 레이싱 게임(카트라이더) 자율주행 인공지능 개발
-부산대학교 정보컴퓨터공학과 2021년 전기 정보통신대대 팀 졸업과제로 수행한 지도학습을 통한 카트라이더 자율주행 인공지능 개발 프로젝트 저장소입니다.
+정보컴퓨터공학과 2021년 전기 정보통신대대 팀 졸업과제로 수행한 지도학습을 통한 카트라이더 자율주행 인공지능 개발 프로젝트 저장소입니다.
 <br/><br/>
 
 ## 구성
@@ -59,4 +59,4 @@ python ./demo/driver2_cnn_lstm.py
 * <a href="https://youtu.be/0fTZ9VjVcr8">데모영상</a>
 * <a href="./demo/poster.pdf">포스터</a>
 * <a href="./demo/presentation.pptx">발표자료</a>
-* <a href="https://youtu.be/145Zlh1SEpE">발표연습</a>
+* <del>발표연습</del> 학교 관련 정보가 있어 삭제
